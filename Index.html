@@ -22,7 +22,7 @@
 
         //客户端选项
         var option = {
-            "ServerUri": "192.168.3.128",
+            "ServerUri": "192.168.3.177",
             "ServerPort": 9001,
             "UserName": "a123456",
             "Password": "123456",
@@ -231,6 +231,23 @@
                         $("#dateTime").val(item.value);
                     }
                 });
+                $.ajax({
+                    type:"Post",
+                    url:"https://localhost:44324/api/Influx/AddInflux",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: 'jsonp',
+                    data:{
+                        "dbName":"db_name",
+                        "dbTable":"test"
+                    },
+                    success: function(res){
+                        console.log(res);
+                    },
+                    error: function(err)
+                    {
+                        console.log(err);
+                    }
+                })
                 $("#machineId").val(restMsg.gateway_id);
             }
             WriteToStatus("收到消息：" + data.payloadString);
@@ -307,7 +324,7 @@
     <div>
         <table>
             <tr>
-                <td><input id="txtIp" type="text" value="192.168.3.128" /></td>
+                <td><input id="txtIp" type="text" value="192.168.3.177" /></td>
                 <td><input id="txtPort" type="text" value="9001" /></td>
                 <td><input id="btnConnect" type="button" value="连接" /></td>
                 <td><input id="btnDisconnect" type="button" value="断开" disabled="disabled" /></td>
