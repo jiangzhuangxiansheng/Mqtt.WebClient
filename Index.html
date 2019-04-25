@@ -1,19 +1,36 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title></title>
-	<meta charset="utf-8" />
+    <meta charset="utf-8" />
     <script src="Scripts/jquery.min.js"></script>
     <script src="Scripts/paho-mqtt.js"></script>
     <script type="text/javascript">
         //所有主题
         var allTopics = [
+            { "Topic": "/data/v1/G00005", "Describe": "报警" },
             { "Topic": "G00005", "Describe": "消息" },
-            { "Topic": "/data/G00005", "Describe": "报警" },
-            { "Topic": "/data/G00005", "Describe": "通知" }
+            { "Topic": "/data/v1/G00005", "Describe": "通知" }
         ];
 
+        //数据采集固定格式
+        var reqData = {
+            "Db_Name":"",
+            "Db_Table":"",
+            "ts": "",
+            "gateway_id": "",
+            "keep_alive": false,
+            "device_id": "",
+            "device_type": "",
+            "data": [deviceData]
+        };
+        var deviceData = {
+            "key": "",
+            "number": null,
+            "value_type": "",
+            "value": ""
+        }
         //选中订阅主题
         var selectedTopics = [];
 
@@ -22,7 +39,7 @@
 
         //客户端选项
         var option = {
-            "ServerUri": "192.168.3.177",
+            "ServerUri": "192.168.3.87",
             "ServerPort": 9001,
             "UserName": "a123456",
             "Password": "123456",
@@ -30,7 +47,7 @@
             "TimeOut": 5,
             "KeepAlive": 100,
             "CleanSession": false,
-            "SSL":false
+            "SSL": false
         }
 
         //客户端
@@ -44,7 +61,7 @@
             $("#subTopics input[type=checkbox]").on("click", function () {
                 var t = $(this).val();
                 var topic;
-                for(var i in allTopics){
+                for (var i in allTopics) {
                     var tmp = allTopics[i];
                     if (tmp.Topic == t) {
                         topic = tmp;
@@ -55,8 +72,8 @@
                     selectedTopics.push(topic);
                 }
                 else {//取消选择
-                    if(selectedTopics.length>0){
-                        for(var i in selectedTopics){
+                    if (selectedTopics.length > 0) {
+                        for (var i in selectedTopics) {
                             var tmp = selectedTopics[i];
                             if (tmp.Topic == t) {
                                 selectedTopics.splice(i, 1);
@@ -77,7 +94,7 @@
 
             //连接按钮点击事件
             $("#btnConnect").on("click", function () {
-                if ($("#txtIp").val()!="") {
+                if ($("#txtIp").val() != "") {
                     option.ServerUri = $("#txtIp").val();
                 }
                 else {
@@ -85,7 +102,7 @@
                     return;
                 }
 
-                if($("#txtPort").val()!=""){
+                if ($("#txtPort").val() != "") {
                     option.ServerPort = Number($("#txtPort").val());
                 }
                 else {
@@ -135,23 +152,23 @@
                     alert("请连接服务端");
                     return;
                 }
-                if(selectedTopics.length==0){
+                if (selectedTopics.length == 0) {
                     alert("请选择要订阅的主题!");
                     return;
                 }
 
                 var msg = "";
-                for(var i in selectedTopics){
+                for (var i in selectedTopics) {
                     var t = selectedTopics[i];
                     client.subscribe(t.Topic);
-                    msg+=t.Topic+";"
+                    msg += t.Topic + ";"
                 }
                 WriteToStatus("成功订阅主题：" + msg);
             });
 
             //发布按钮点击事件
             $("#btnPublish").on("click", function () {
-                if(!client){
+                if (!client) {
                     alert("请连接服务端");
                     return;
                 }
@@ -159,7 +176,7 @@
                     alert("请选择要发布的主题!");
                     return;
                 }
-                if($("#txtContent").val()==""){
+                if ($("#txtContent").val() == "") {
                     alert("请输入要发布的内容");
                     return;
                 }
@@ -214,6 +231,17 @@
                 var restMsg = $.parseJSON((data.payloadString).toString());
                 //
                 var device = restMsg.device[0].data;
+                //
+                reqData.gateway_id = restMsg.gateway_id;
+                //
+                reqData.keep_alive = restMsg.keep_alive;
+                //
+                reqData.ts = restMsg.ts;
+                reqData.device_id = restMsg.device[0].device_id;
+                reqData.data = device;
+                reqData.device_type = restMsg.device[0].device_type;
+                reqData.Db_Name = "db_name";
+                reqData.Db_Table = "test";
                 $.each(device, function (index, item) {
                     if (item.key == "cnc_connectstatus") {
                         $("#status").val(item.value);
@@ -232,19 +260,15 @@
                     }
                 });
                 $.ajax({
-                    type:"Post",
-                    url:"https://localhost:44324/api/Influx/AddInflux",
-                    contentType: "application/json; charset=utf-8",
-                    dataType: 'jsonp',
-                    data:{
-                        "dbName":"db_name",
-                        "dbTable":"test"
-                    },
-                    success: function(res){
+                    type: 'POST',
+                    url: "https://localhost:44335/api/Influx/AddInflux",
+                    contentType: "application/json;charset=utf-8",
+                    dataType: "json",
+                    data: JSON.stringify(reqData),
+                    success: function (res) {
                         console.log(res);
                     },
-                    error: function(err)
-                    {
+                    error: function (err) {
                         console.log(err);
                     }
                 })
@@ -256,10 +280,10 @@
         //绑定订阅主题
         function BindSubTopics(topics) {
             var html = "";
-            for (var i = 0; i < topics.length;i++){
+            for (var i = 0; i < topics.length; i++) {
                 var topic = topics[i];
                 html += topic.Describe;
-                html += '<input type="checkbox" value="'+topic.Topic+'"/>';
+                html += '<input type="checkbox" value="' + topic.Topic + '"/>';
             }
             $("#subTopics").html(html);
         }
@@ -289,7 +313,7 @@
             }
             return (S4() + S4() + "-" + S4() + "-" + S4() + "-" + S4() + "-" + S4() + S4() + S4());
         }
-        
+
         function isJsonString(str) {
             if (typeof str == 'string') {
                 try {
@@ -309,7 +333,7 @@
 
 
         //切换按钮状态
-        function enable(button,enabled) {
+        function enable(button, enabled) {
             if (enabled) {
                 button.removeAttr("disabled");
             }
@@ -324,7 +348,7 @@
     <div>
         <table>
             <tr>
-                <td><input id="txtIp" type="text" value="192.168.3.177" /></td>
+                <td><input id="txtIp" type="text" value="192.168.3.87" /></td>
                 <td><input id="txtPort" type="text" value="9001" /></td>
                 <td><input id="btnConnect" type="button" value="连接" /></td>
                 <td><input id="btnDisconnect" type="button" value="断开" disabled="disabled" /></td>
@@ -371,7 +395,7 @@
                     <input id="dateTime" type="text" value="2019.04.17" />
                 </td>
             </tr>
-           
+
         </table>
     </div>
     <div class="div_celebrity_list">
@@ -383,7 +407,7 @@
             </tr>
         </table>
     </div>
-    <div >
+    <div>
         <table>
             <tr>
                 <td></td>
